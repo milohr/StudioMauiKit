@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>artificial-intelligence.svg</file>
+        <file>brain.svg</file>
+        <file>brain(1).svg</file>
+        <file>brain(2).svg</file>
+        <file>wave2.svg</file>
+        <file>wave3.svg</file>
+        <file>wave4.svg</file>
+        <file>wave5.svg</file>
+    </qresource>
+</RCC>

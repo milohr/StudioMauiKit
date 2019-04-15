@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/wave2.svg</file>
+        <file>assets/wave3.svg</file>
+        <file>assets/wave4.svg</file>
+        <file>assets/wave5.svg</file>
+    </qresource>
+</RCC>
