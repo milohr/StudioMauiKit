@@ -6,6 +6,8 @@ from os import path
 import datetime
 import calendar
 import numpy as np
+from src.controlers.utils import read_str
+from src.controlers.io.constants import FIFF
 
 
 def read_cnt(input_name: str, montage = None, eog = None, misc = None,
@@ -19,7 +21,7 @@ def read_cnt(input_name: str, montage = None, eog = None, misc = None,
         Path or instance of montage containing electrode positions.
         If None, xy sensor locations are read from the header (``x_coord`` and
         ``y_coord`` in ``ELECTLOC``) and fit to a sphere. See the documentation
-    :param eog: list | tuple | 'auto'
+    :param eog: list | tuple | 'auto' | 'header'
         Names of channels or list of indices that should be designated
         EOG channels. If 'header', VEOG and HEOG channels assigned in the file
         header are used. If 'auto', channel names containing 'EOG' are used.
@@ -57,4 +59,148 @@ def read_cnt(input_name: str, montage = None, eog = None, misc = None,
                   data_format = data_format, date_format = date_format, preload = preload, verbose = verbose)
 
 
-class RawCNT(BaseRaw)
+def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
+    '''
+    Conversion tool from Neuroscan to .
+    Reading only the fields of interest. Structure of the whole header at
+    http://paulbourke.net/dataformats/eeg/
+    :param input_name: str
+        Path to the data (raw_eeg) file.
+    :param eog: list | tuple | 'auto' | 'header'
+        Names of channels or list of indices that should be designated
+        EOG channels. If 'header', VEOG and HEOG channels assigned in the file
+        header are used. If 'auto', channel names containing 'EOG' are used.
+        Defaults to empty tuple.
+    :param ecg: list | tuple | 'auto'
+        Names of channels or list of indices that should be designated
+        ECG channels. If 'auto', the channel names containing 'ECG' are used.
+        Defaults to empty tuple
+    :param emg: list | tuple
+        Names of channels or list of indices that should be designated
+        EMG channels. If 'auto', the channel names containing 'EMG' are used.
+        Defaults to empty tuple.
+    :param misc: list | tuple
+        Names of channels or list of indices that should be designated
+        MISC channels. Defaults to empty tuple.
+    :param data_format: 'auto' | 'int16' | 'int32'
+        Defines the data format the data is read in. If 'auto', it is
+        determined from the file header using ``numsamples`` field.
+        Defaults to 'auto'.
+    :param date_format: str
+        Format of date in the header. Currently supports 'mm/dd/yy' (default)
+        and 'dd/mm/yy'.
+    :return: info, cnt_info
+    '''
+    offset = 900  # Size of the header setup
+    cnt_info = dict()
+    with open(input_name, 'rb', buffering = 0) as f:
+        f.seek(21)  # Position to read file
+        patient_id = read_str(f, 20)
+        patient_id = int(patient_id) if patient_id.isdigit() else 0
+        print(patient_id)
+        f.seek(121)
+        patient_name = read_str(f, 20).split()
+        last_name = patient_name[0] if len(patient_name) > 0 else ''
+        first_name = patient_name[-1] if len(patient_name) > 0 else ''
+        f.seek(2, 1)
+        sex = read_str(f, 1)
+        print(sex, patient_name, first_name, last_name)
+        if sex == 'M':
+            sex = FIFF.FIFFV_SUBJ_SEX_MALE
+        elif sex == 'F':
+            sex = FIFF.FIFFV_SUBJ_SEX_FEMALE
+        else:
+            sex = FIFF.FIFFV_SUBJ_SEX_UNKNOWN
+        hand = read_str(f, 1)
+        if hand == 'R':
+            hand = FIFF.FIFFV_SUBJ_HAND_RIGHT
+        elif hand == 'L':
+            hand = FIFF.FIFFV_SUBJ_HAND_LEFT
+        else:  # Can be 'M' for mixed or 'U'
+            hand = None
+        print(hand)
+        f.seek(205)
+        session_label = read_str(f, 20)
+        session_date = read_str(f, 10)
+        time = read_str(f, 12)
+        date = session_date.split('/')
+        date_format = 'dd/mm/yy'
+        if len(date) == 3 and len(time) == 3:
+            if date[2].startswith('9'):
+                date[2] = '19' + date[2]
+            elif len(date[2]) == 2:
+                date[2] = '20' + date[2]
+            time = time.split(':')
+            if date_format == 'dd/mm/yy':
+                date[0], date[1] = date[1], date[0]
+            elif date_format != 'mm/dd/yy':
+                raise ValueError("Only date formats 'mm/dd/yy' and "
+                                 "'dd/mm/yy' supported. "
+                                 "Got '%s'." % date_format)
+            # Assuming mm/dd/yy
+            date = datetime.datetime(int(date[2]), int(date[0]),
+                                     int(date[1]), int(time[0]),
+                                     int(time[1]), int(time[2]))
+            meas_date = (calendar.timegm(date.utctimetuple()), 0)
+        else:
+            print(' Could not parse meas date from the header. '
+                  'Setting to None.')
+            meas_date = None
+        f.seek(370)
+        n_channels = np.fromfile(f, dtype = '<u2', count = 1)[0]
+        f.seek(376)
+        sfreq = np.fromfile(f, dtype = '<u2', count = 1)[0]
+        if eog == 'header':
+            f.seek(402)
+            eog = [idx for idx in np.fromfile(f, dtype = 'i2', count = 2) if idx >= 0]
+
+        f.seek(438)
+        lowpass_toggle = np.fromfile(f, 'i1', count = 1)[0]
+        highpass_toggle = np.fromfile(f, 'i1', count = 1)[0]
+
+        f.seek(864)
+        n_samples = np.fromfile(f, dtype = '<i4', count = 1)[0]
+        f.seek(869)
+        lowcutoff = np.fromfile(f, dtype = 'f4', count = 1)[0]
+        f.seek(2, 1)
+        highcutoff = np.fromfile(f, dtype = 'f4', count = 1)[0]
+
+        f.seek(886)
+        event_offset = np.fromfile(f, dtype = '<i4', count = 1)[0]
+        cnt_info['continuous_seconds'] = np.fromfile(f, dtype = '<f4', count = 1)[0]
+
+        if event_offset < offset:  # no events
+            data_size = n_samples * n_channels
+        else:
+            data_size = event_offset - (offset + 75 * n_channels)
+        if data_format == 'auto':
+            if (n_samples == 0 or
+                    data_size // (n_samples * n_channels) not in [2, 4]):
+                print('Could not define the number of bytes automatically. Defaulting to 2.')
+                n_bytes = 2
+                n_samples = data_size // (n_bytes * n_channels)
+            else:
+                n_bytes = data_size // (n_samples * n_channels)
+        else:
+            if data_format not in ['int16', 'int32']:
+                raise ValueError("data_format should be 'auto', 'int16' or "
+                                 "'int32'. Got %s." % data_format)
+            n_bytes = 2 if data_format == 'int16' else 4
+            n_samples = data_size // (n_bytes * n_channels)
+
+            cnt_info['channel_offset'] = np.fromfile(f, dtype = '<i4', count = 1)[0]
+            if cnt_info['channel_offset'] > 1:
+                cnt_info['channel_offset'] //= n_bytes
+            else:
+                cnt_info['channel_offset'] = 1
+            ch_names, cals, baselines, chs, pos = (list(), list(), list(), list(), list())
+            
+
+class RawCNT:
+    
+    def __init__(self, input_name, montage, eog = None, misc = None, ecg = None, emg = None,
+                 data_format = 'auto', date_format = None, preload = False, verbose = None):
+        input_name = path.abspath(input_name)
+        info, cnt_info = _get_cnt_info(input_name, eog, ecg, emg, misc,
+                                       data_format, date_format)
+        last_samples = [cnt_info['n_samples'] - 1]
