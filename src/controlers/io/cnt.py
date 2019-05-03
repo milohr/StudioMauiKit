@@ -8,6 +8,7 @@ import calendar
 import numpy as np
 from src.controlers.utils import read_str
 from src.controlers.io.constants import FIFF
+from src.controlers.info import _empty_info
 
 
 def read_cnt(input_name: str, montage = None, eog = None, misc = None,
@@ -187,13 +188,62 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
                                  "'int32'. Got %s." % data_format)
             n_bytes = 2 if data_format == 'int16' else 4
             n_samples = data_size // (n_bytes * n_channels)
+            
+        # Channel offset refers to the size of blocks per channel in the file.
+        cnt_info['channel_offset'] = np.fromfile(f, dtype = '<i4', count = 1)[0]
+        if cnt_info['channel_offset'] > 1:
+            cnt_info['channel_offset'] //= n_bytes
+        else:
+            cnt_info['channel_offset'] = 1
+        ch_names, cals, baselines, chs, pos = (list(), list(), list(), list(), list())
+        bads = list()
+        for ch_idx in range(n_channels):  # Electrodes fields
+            f.seek(offset + 75 * ch_idx)
+            ch_name = read_str(f, 10)
+            ch_names.append(ch_name)
+            f.seek(offset + 75 * ch_idx + 4)
+            if np.fromfile(f, dtype = 'u1', count = 1)[0]:
+                bads.append(ch_name)
+            f.seek(offset + 75 * ch_idx + 19)
+            xy = np.fromfile(f, dtype = 'f4', count = 2)
+            xy[1] *= -1  # invert y-axis
+            pos.append(xy)
+            f.seek(offset + 75 * ch_idx + 47)
+            # Baselines are subtracted before scaling the data.
+            baselines.append(np.fromfile(f, dtype = 'i2', count = 1)[0])
+            f.seek(offset + 75 * ch_idx + 59)
+            sensitivity = np.fromfile(f, dtype = 'f4', count = 1)[0]
+            f.seek(offset + 75 * ch_idx + 71)
+            cal = np.fromfile(f, dtype = 'f4', count = 1)
+            cals.append(cal * sensitivity * 1e-6 / 204.8)
 
-            cnt_info['channel_offset'] = np.fromfile(f, dtype = '<i4', count = 1)[0]
-            if cnt_info['channel_offset'] > 1:
-                cnt_info['channel_offset'] //= n_bytes
+        if event_offset > offset:
+            f.seek(event_offset)
+            event_type = np.fromfile(f, dtype = '<i1', count = 1)[0]
+            event_size = np.fromfile(f, dtype = '<i4', count = 1)[0]
+            if event_type == 1:
+                event_bytes = 8
+            elif event_type in (2, 3):
+                event_bytes = 19
             else:
-                cnt_info['channel_offset'] = 1
-            ch_names, cals, baselines, chs, pos = (list(), list(), list(), list(), list())
+                raise IOError('Unexpected event size.')
+            n_events = event_size // event_bytes
+        else:
+            n_events = 0
+
+        stim_channel = np.zeros(n_samples)  # Construct stim channel
+        for i in range(n_events):
+            f.seek(event_offset + 9 + i * event_bytes)
+            event_id = np.fromfile(f, dtype = 'u2', count = 1)[0]
+            f.seek(event_offset + 9 + i * event_bytes + 4)
+            offset = np.fromfile(f, dtype = '<i4', count = 1)[0]
+            if event_type == 3:
+                offset *= n_bytes * n_channels
+            event_time = offset - 900 - 75 * n_channels
+            event_time //= n_channels * n_bytes
+            stim_channel[event_time - 1] = event_id
+    
+    info = _empty_info(sfreq)
             
 
 class RawCNT:

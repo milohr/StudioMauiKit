@@ -111,3 +111,31 @@ if __name__ == '__main__':
             n_samples = data_size // (n_bytes * n_channels)
         
         print(n_samples, lowcutoff, highcutoff, event_offset, data_size, n_samples, n_bytes)
+        # Channel offset refers to the size of blocks per channel in the file.
+        cnt_info['channel_offset'] = np.fromfile(f, dtype = '<i4', count = 1)[0]
+        if cnt_info['channel_offset'] > 1:
+            cnt_info['channel_offset'] //= n_bytes
+        else:
+            cnt_info['channel_offset'] = 1
+        ch_names, cals, baselines, chs, pos = (list(), list(), list(), list(), list())
+        bads = list()
+        for ch_idx in range(n_channels):  # Electrodes fields
+            f.seek(offset + 75 * ch_idx)
+            ch_name = read_str(f, 10)
+            ch_names.append(ch_name)
+            f.seek(offset + 75 * ch_idx + 4)
+            if np.fromfile(f, dtype = 'u1', count = 1)[0]:
+                bads.append(ch_name)
+            f.seek(offset + 75 * ch_idx + 19)
+            xy = np.fromfile(f, dtype = 'f4', count = 2)
+            xy[1] *= -1  # invert y-axis
+            pos.append(xy)
+            f.seek(offset + 75 * ch_idx + 47)
+            # Baselines are subtracted before scaling the data.
+            baselines.append(np.fromfile(f, dtype = 'i2', count = 1)[0])
+            f.seek(offset + 75 * ch_idx + 59)
+            sensitivity = np.fromfile(f, dtype = 'f4', count = 1)[0]
+            f.seek(offset + 75 * ch_idx + 71)
+            cal = np.fromfile(f, dtype = 'f4', count = 1)
+            cals.append(cal * sensitivity * 1e-6 / 204.8)
+        print(ch_names, cals, baselines, chs, pos)
