@@ -4,9 +4,9 @@
 
 
 class Bunch(dict):
-    '''
+    """
     Dictionary that exposes it key as attributes
-    '''
+    """
     
     def __init__(self, **kwargs):
         dict.__init__(self, kwargs)
@@ -14,9 +14,9 @@ class Bunch(dict):
 
 
 class BunchConst(Bunch):
-    '''
+    """
     Class to prevent re-defining constats
-    '''
+    """
     
     def __setattr__(self, key, value):
         if key != '__dict__' and hasattr(self, key):
@@ -36,3 +36,26 @@ FIFF.FIFFV_SUBJ_HAND_LEFT = 2
 
 # Info on channels
 FIFF.FIFF_CH_NAME_MAX_LENGTH = 15
+
+# Coil types
+FIFF.FIFFV_COIL_EEG = 1  # EEG electrode position in r0
+FIFF.FIFFV_COIL_NONE = 0  # Location info contains no data
+
+# International System of Units (SI) derived units
+FIFF.FIFF_UNIT_HZ = 101  # Hertz
+FIFF.FIFF_UNIT_V = 107  # Volt
+FIFF.FIFF_UNIT_OHM = 109  # Ohm
+
+# Channel types
+FIFF.FIFFV_EEG_CH = 2
+FIFF.FIFFV_EOG_CH = 202
+FIFF.FIFFV_EMG_CH = 302
+FIFF.FIFFV_ECG_CH = 402
+FIFF.FIFFV_MISC_CH = 502
+
+# Coordinate frames
+FIFF.FIFFV_COORD_HEAD = 4
+
+
+
+

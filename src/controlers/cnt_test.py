@@ -1,6 +1,8 @@
 import calendar
 import datetime
 import numpy as np
+from src.controlers.info import _empty_info
+from src.controlers.utils import channels
 
 
 def b(s):
@@ -23,7 +25,7 @@ if __name__ == '__main__':
     offset = 900  # Size of the 'SETUP' header.
     cnt_info = dict()
     with open(strfile, 'rb', buffering = 0) as f:
-        f.seek(21) # Position to readd file
+        f.seek(21) # Position to read file
         patient_id = read_str(f, 20)
         patient_id = int(patient_id) if patient_id.isdigit() else 0
         print(patient_id)
@@ -139,3 +141,44 @@ if __name__ == '__main__':
             cal = np.fromfile(f, dtype = 'f4', count = 1)
             cals.append(cal * sensitivity * 1e-6 / 204.8)
         print(ch_names, cals, baselines, chs, pos)
+
+        if event_offset > offset:
+            f.seek(event_offset)
+            event_type = np.fromfile(f, dtype = '<i1', count = 1)[0]
+            event_size = np.fromfile(f, dtype = '<i4', count = 1)[0]
+            if event_type == 1:
+                event_bytes = 8
+            elif event_type in (2, 3):
+                event_bytes = 19
+            else:
+                raise IOError('Unexpected event size.')
+            n_events = event_size // event_bytes
+        else:
+            n_events = 0
+
+        stim_channel = np.zeros(n_samples)  # Construct stim channel
+        for i in range(n_events):
+            f.seek(event_offset + 9 + i * event_bytes)
+            event_id = np.fromfile(f, dtype = 'u2', count = 1)[0]
+            f.seek(event_offset + 9 + i * event_bytes + 4)
+            offset = np.fromfile(f, dtype = '<i4', count = 1)[0]
+            if event_type == 3:
+                offset *= n_bytes * n_channels
+            event_time = offset - 900 - 75 * n_channels
+            event_time //= n_channels * n_bytes
+            stim_channel[event_time - 1] = event_id
+
+    info = _empty_info(sfreq)  # Create the information data
+
+    if lowpass_toggle is 1:
+        info['lowpass'] = highcutoff
+    if highpass_toggle is 1:
+        info['highpass'] = lowcutoff
+    subject_info = {'id':  patient_id, 'first_name': first_name, 'last_name': last_name,
+                    'sex': sex, 'hand': hand}
+    print(subject_info, highpass_toggle, lowpass_toggle, n_events, event_type, event_size)
+    
+    if eog == 'auto':
+        eog = channels(ch_names, 'EOG', eog)
+    print(f'eog channels {eog}')
+    

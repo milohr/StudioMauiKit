@@ -6,7 +6,11 @@ from os import path
 import datetime
 import calendar
 import numpy as np
+
+from src.controlers.channels.layout import _topo_to_sphere
 from src.controlers.utils import read_str
+from src.controlers.utils import channels
+from src.controlers.utils import _create_channels
 from src.controlers.io.constants import FIFF
 from src.controlers.info import _empty_info
 
@@ -76,7 +80,7 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
         Names of channels or list of indices that should be designated
         ECG channels. If 'auto', the channel names containing 'ECG' are used.
         Defaults to empty tuple
-    :param emg: list | tuple
+    :param emg: list | tuple | 'auto'
         Names of channels or list of indices that should be designated
         EMG channels. If 'auto', the channel names containing 'EMG' are used.
         Defaults to empty tuple.
@@ -154,22 +158,22 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
         if eog == 'header':
             f.seek(402)
             eog = [idx for idx in np.fromfile(f, dtype = 'i2', count = 2) if idx >= 0]
-
+        
         f.seek(438)
         lowpass_toggle = np.fromfile(f, 'i1', count = 1)[0]
         highpass_toggle = np.fromfile(f, 'i1', count = 1)[0]
-
+        
         f.seek(864)
         n_samples = np.fromfile(f, dtype = '<i4', count = 1)[0]
         f.seek(869)
         lowcutoff = np.fromfile(f, dtype = 'f4', count = 1)[0]
         f.seek(2, 1)
         highcutoff = np.fromfile(f, dtype = 'f4', count = 1)[0]
-
+        
         f.seek(886)
         event_offset = np.fromfile(f, dtype = '<i4', count = 1)[0]
         cnt_info['continuous_seconds'] = np.fromfile(f, dtype = '<f4', count = 1)[0]
-
+        
         if event_offset < offset:  # no events
             data_size = n_samples * n_channels
         else:
@@ -188,7 +192,7 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
                                  "'int32'. Got %s." % data_format)
             n_bytes = 2 if data_format == 'int16' else 4
             n_samples = data_size // (n_bytes * n_channels)
-            
+        
         # Channel offset refers to the size of blocks per channel in the file.
         cnt_info['channel_offset'] = np.fromfile(f, dtype = '<i4', count = 1)[0]
         if cnt_info['channel_offset'] > 1:
@@ -216,7 +220,7 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
             f.seek(offset + 75 * ch_idx + 71)
             cal = np.fromfile(f, dtype = 'f4', count = 1)
             cals.append(cal * sensitivity * 1e-6 / 204.8)
-
+        
         if event_offset > offset:
             f.seek(event_offset)
             event_type = np.fromfile(f, dtype = '<i1', count = 1)[0]
@@ -230,7 +234,7 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
             n_events = event_size // event_bytes
         else:
             n_events = 0
-
+        
         stim_channel = np.zeros(n_samples)  # Construct stim channel
         for i in range(n_events):
             f.seek(event_offset + 9 + i * event_bytes)
@@ -243,8 +247,35 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
             event_time //= n_channels * n_bytes
             stim_channel[event_time - 1] = event_id
     
-    info = _empty_info(sfreq)
-            
+    info = _empty_info(sfreq)  # Create the information data
+    
+    if lowpass_toggle is 1:
+        info['lowpass'] = highcutoff
+    if highpass_toggle is 1:
+        info['highpass'] = lowcutoff
+    subject_info = {'id':  patient_id, 'first_name': first_name, 'last_name': last_name,
+                    'sex': sex, 'hand': hand}
+    
+    # Channels treatment
+    if eog == 'auto':
+        eog = channels(ch_names, 'EOG', eog)
+    if ecg == 'auto':
+        ecg = channels(ch_names, 'ECG', ecg)
+    if emg == 'auto':
+        emg = channels(ch_names, 'EMG', emg)
+    
+    chs = _create_channels(ch_names, cals, FIFF.FIFFV_COIL_EEG, FIFF.FIFFV_EEG_CH, eog, ecg, emg, misc)
+    eeg_signature = [idx for idx, ch in enumerate(chs) if ch['coil_type'] == FIFF.FIFFV_COIL_EEG]
+    coords = _topo_to_sphere(pos, eeg_signature)  # Sphere coordinates
+    locs = np.full((len(chs), 12), np.nan)  # Localizations array
+    locs[:, :3] = coords
+    for ch, loc in zip(chs, locs):  # Paired items
+        ch.update(loc=loc)
+    
+    
+    
+    
+
 
 class RawCNT:
     
