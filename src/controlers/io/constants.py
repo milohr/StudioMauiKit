@@ -42,18 +42,21 @@ FIFF.FIFFV_COIL_EEG = 1  # EEG electrode position in r0
 FIFF.FIFFV_COIL_NONE = 0  # Location info contains no data
 
 # International System of Units (SI) derived units
+FIFF.FIFF_UNIT_NONE = -1
 FIFF.FIFF_UNIT_HZ = 101  # Hertz
 FIFF.FIFF_UNIT_V = 107  # Volt
 FIFF.FIFF_UNIT_OHM = 109  # Ohm
 
 # Channel types
 FIFF.FIFFV_EEG_CH = 2
+FIFF.FIFFV_STIM_CH = 3
 FIFF.FIFFV_EOG_CH = 202
 FIFF.FIFFV_EMG_CH = 302
 FIFF.FIFFV_ECG_CH = 402
 FIFF.FIFFV_MISC_CH = 502
 
 # Coordinate frames
+FIFF.FIFFV_COORD_UNKNOWN = 0
 FIFF.FIFFV_COORD_HEAD = 4
 
 

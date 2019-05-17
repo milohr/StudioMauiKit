@@ -272,9 +272,15 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
     for ch, loc in zip(chs, locs):  # Paired items
         ch.update(loc=loc)
     
-    
-    
-    
+    # Addd the stim channel
+    chan_info = {'cal': 1.0, 'logno': len(chs) + 1, 'scanno': len(chs) + 1, 'range': 1.0, 'unit_mul': 0.,
+                 'ch_name': 'STI 014', 'unit': FIFF.FIFF_UNIT_NONE, 'coord_frame': FIFF.FIFFV_COORD_UNKNOWN,
+                 'loc': np.zeros(12), 'coil_type': FIFF.FIFFV_COIL_NONE, 'kind': FIFF.FIFFV_STIM_CH}
+    chs.append(chan_info)
+    baselines.append(0)  # For stim channel
+    cnt_info.update(baselines=np.array(baselines), n_samples=n_samples, stim_channel=stim_channel, n_bytes=n_bytes)
+    info.update(meas_date=meas_date, desciption=str(session_label), bads=bads, subject_info=subject_info, chs=chs)
+    return info, cnt_info
 
 
 class RawCNT:
@@ -285,3 +291,5 @@ class RawCNT:
         info, cnt_info = _get_cnt_info(input_name, eog, ecg, emg, misc,
                                        data_format, date_format)
         last_samples = [cnt_info['n_samples'] - 1]
+        # super(RawCNT, self).__init__(info, preload, filenames=[input_name], raw_extras=[cnt_info],
+        #                              last_samples=last_samples, orig_format='int', verbose=verbose)
