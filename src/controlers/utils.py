@@ -60,6 +60,7 @@ def _create_channels(ch_names, cals, ch_coil, ch_kind, eog, ecg, emg, misc):
     :return: channels
     """
     channels = list()
+    print(ch_names)
     for idx, ch_name in enumerate(ch_names):
         if ch_name in eog or idx in eog:
             coil_type = FIFF.FIFFV_COIL_NONE

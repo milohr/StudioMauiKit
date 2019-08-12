@@ -1,4 +1,4 @@
-''' Conversion tool from Neuroscan to .'''
+''' Read tool from Neuroscan '''
 
 # Author: Keveen Rodriguez Zapata <keveenrodriguez@gmail.com>
 
@@ -9,6 +9,7 @@ import numpy as np
 
 from src.controlers.channels.layout import _topo_to_sphere
 from src.controlers.utils import read_str
+from src.controlers.utils import _find_channels
 from src.controlers.utils import channels
 from src.controlers.utils import _create_channels
 from src.controlers.io.constants import FIFF
@@ -258,12 +259,15 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
     
     # Channels treatment
     if eog == 'auto':
-        eog = channels(ch_names, 'EOG', eog)
+        eog = _find_channels(ch_names, 'EOG')
+        #eog = channels(ch_names, 'EOG', eog)
     if ecg == 'auto':
-        ecg = channels(ch_names, 'ECG', ecg)
+        ecg = _find_channels(ch_names, 'ECG')
+        #ecg = channels(ch_names, 'ECG', ecg)
     if emg == 'auto':
-        emg = channels(ch_names, 'EMG', emg)
-    
+        emg = _find_channels(ch_names, 'EMG')
+        #emg = channels(ch_names, 'EMG', emg)
+
     chs = _create_channels(ch_names, cals, FIFF.FIFFV_COIL_EEG, FIFF.FIFFV_EEG_CH, eog, ecg, emg, misc)
     eeg_signature = [idx for idx, ch in enumerate(chs) if ch['coil_type'] == FIFF.FIFFV_COIL_EEG]
     coords = _topo_to_sphere(pos, eeg_signature)  # Sphere coordinates
@@ -285,11 +289,13 @@ def _get_cnt_info(input_name, eog, ecg, emg, misc, data_format, date_format):
 
 class RawCNT:
     
-    def __init__(self, input_name, montage, eog = None, misc = None, ecg = None, emg = None,
+    def __init__(self, input_name, montage, eog = 'auto', misc = None, ecg = 'auto', emg = 'auto',
                  data_format = 'auto', date_format = None, preload = False, verbose = None):
         input_name = path.abspath(input_name)
         info, cnt_info = _get_cnt_info(input_name, eog, ecg, emg, misc,
-                                       data_format, date_format)
+                                       data_format = 'auto', date_format = 'dd/mm/yy')
         last_samples = [cnt_info['n_samples'] - 1]
         # super(RawCNT, self).__init__(info, preload, filenames=[input_name], raw_extras=[cnt_info],
         #                              last_samples=last_samples, orig_format='int', verbose=verbose)
+
+

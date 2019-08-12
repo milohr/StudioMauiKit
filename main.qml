@@ -17,22 +17,49 @@ Maui.ApplicationWindow
     about.appIcon: "qrc:/brain(1).svg"
 
     /**** BRANDING COLORS ****/
-    menuButton.colorScheme.highlightColor: headBarFGColor
-    searchButton.colorScheme.highlightColor: headBarFGColor
-    headBarBGColor: "#484e78"
-    headBarFGColor: "#fafafa"
+//    menuButton.colorScheme.highlightColor: headBarFGColor
+//    searchButton.colorScheme.highlightColor: headBarFGColor
+//    headBarBGColor: "#484e78"
+//    headBarFGColor: "#fafafa"
 
 
     /***** PROPS *****/
-    floatingBar: true
-    footBarOverlap: true
-    allowRiseContent: false
-    altToolBars: false
+
+    Maui.FileDialog
+    {
+        id: fmDialog
+    }
+
+    Maui.Dialog
+    {
+        id: mDialog
+        title: "Project name"
+        message: ""
+        //confirmationDialog: true
+        entryField: true
+        acceptButton.text: qsTr("Create")
+        onAccepted:
+        {
+            console.log(textEntry.text)
+            console.log(loadProject.create(textEntry.text))
+            loadProject.create(textEntry.text)
+//            var str = loadProject.create(textEntry.text)
+//            fmDialog.initPath = str.slice(0,str.lastIndexOf('/'))
+            loadFile.assign_project(textEntry.text)
+            close()
+        }
+        rejectButton.text: qsTr("Cancel")
+        onRejected:
+        {
+            console.log("The creation of the project has been canceled")
+            close()
+        }
+    }
+
 
     //property int currentView: views.start
-    headBar.drawBorder: false
     headBar.middleContent: [
-        Maui.ToolButton
+        ToolButton
         {
             onClicked: currentView = views.start
         }
@@ -42,11 +69,34 @@ Maui.ApplicationWindow
     leftIcon.visible: false
 
     headBar.leftContent: [
-        Maui.ToolButton
+        ToolButton
         {
-            iconName: "application-menu"
+            visible: slideView.modal
+            icon.name: "view-right-new"
+            //iconName: "application-menu"
             onClicked: slideView.visible = !slideView.visible
-            iconColor: headBarFGColor
+            checkable: true
+            checked: slideView.visible
+            icon.color: headBarFGColor
+        },
+        ToolButton
+        {
+            icon.name: "go-parent-folder"
+            onClicked:
+            {
+                fmDialog.filters = ["*.cnt"]  //Signals format allowed
+                fmDialog.mode = fmDialog.modes.OPEN
+                fmDialog.show(function(paths)
+                {
+                    console.log(paths)
+                    loadFile.read(paths) // Falta organizar el settings respectivo y los hilos
+                    loadFile.update_path(paths)
+                })
+            }
+        },
+        ToolButton
+        {
+            icon.name: "labplot-xy-interpolation-curve"
         }
 
     ]
@@ -63,11 +113,12 @@ Maui.ApplicationWindow
 
     }
 
+
     Maui.Page
     {
         id: page
         anchors.fill: parent
-        colorScheme.backgroundColor: headBarBGColor
+//        colorScheme.backgroundColor: headBarBGColor
         headBar.visible: false
 
         ColumnLayout
@@ -88,27 +139,50 @@ Maui.ApplicationWindow
                     anchors.centerIn: parent
                     spacing: space.medium
 
-                    Maui.Button
+                    Button
                     {
                         id: buttonOpen
                         text: "Open"
                         height: iconSizes.big *1.3
                         width: height *2
+                        onClicked:
+                        {
+                            console.log(fmDialog.initPath)
+                            var dir = loadProject.settings_dir(fmDialog.initPath)
+                            dir = dir.slice(0, dir.lastIndexOf('/'))
+                            dir = [dir,'Nebula'].join('/').replace(/\/{2,}/, '/')
+
+                            fmDialog.initPath = dir
+                            fmDialog.filters = ["*.conf"]
+                            fmDialog.mode = fmDialog.modes.OPEN
+                            fmDialog.show(function(paths)
+                            {
+//                                fmDialog.initPath = dir // home/$USER
+                                console.log(paths)
+                                loadProject.load(paths)
+//                                var dir = loadProject.load(paths)
+//                                console.log("desde qml2 "+dir)
+
+//                                loadFile.read(paths)
+//                                loadFile.update_path(paths)
+                            })
+
+                        }
                         //                        colorScheme.backgroundColor: hovered ? Qt.darker(headBarBGColor) : "transparent"
-                        colorScheme.textColor: headBarFGColor
+//                        colorScheme.textColor: headBarFGColor
                         //                        colorScheme.borderColor: "#7079ba"
 
-                        background: Rectangle {
-                            border.color: "#7079ba"
-                            border.width: 2
-                            radius: 4
-                            color: buttonOpen.hovered ? Qt.darker(headBarBGColor) : "transparent"
-                        }
+//                        background: Rectangle {
+//                            border.color: "#7079ba"
+//                            border.width: 2
+//                            radius: 4
+//                            color: buttonOpen.hovered ? Qt.darker(headBarBGColor) : "transparent"
+//                        }
 
 
                     }
 
-                    Maui.Button
+                    Button
                     {
                         id: buttonNew
                         text: "New"
@@ -116,15 +190,19 @@ Maui.ApplicationWindow
                         //Layout.fillHeight: true
                         height: iconSizes.big *1.3
                         width: height *2
+                        onClicked:  mDialog.open()
+
+
+
                         //                        colorScheme.backgroundColor: hovered ? Qt.darker(headBarBGColor) : "transparent"
-                        colorScheme.textColor: headBarFGColor
+//                        colorScheme.textColor: headBarFGColor
                         //                        colorScheme.borderColor: "#7079ba"
-                        background: Rectangle {
-                            border.color: "#7079ba"
-                            border.width: 2
-                            radius: 4
-                            color: buttonNew.hovered ? Qt.darker(headBarBGColor) : "transparent"
-                        }
+//                        background: Rectangle {
+//                            border.color: "#7079ba"
+//                            border.width: 2
+//                            radius: 4
+//                            color: buttonNew.hovered ? Qt.darker(headBarBGColor) : "transparent"
+//                        }
 
                     }
 

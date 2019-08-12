@@ -1,15 +1,32 @@
 #!/usr/bin/env python3
+# Author: Keveen Rodriguez Zapata <keveenrodriguez@gmail.com>
+#
+# License: GNU Lesser General Public License v3.0 (LGPLv3)
 
+import sys
 from PySide2.QtWidgets import QApplication
 from PySide2.QtQml import QQmlApplicationEngine
+from PySide2.QtCore import QUrl
 
-if __name__ == "__main__":
-    app = QApplication()
+from src.controlers.io import load_file
+from src.controlers.io import project_settings
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
     engine = QQmlApplicationEngine()
+    engine.load(QUrl("main.qml"))
 
-    context = engine.rootContext()
-    engine.load("main.qml")
+    # Load project name
+    loadProject = project_settings.LoadProject()
+    # Load Signal Path
+    loadFile = load_file.LoadFile()
+    
+    engine.rootContext().setContextProperty("loadProject", loadProject)
+    engine.rootContext().setContextProperty("loadFile", loadFile)
+    
+    #settings = project_settings.ProjectSettings(loadProject, loadFile)
 
-    if len(engine.rootObjects()) == 0:
-        quit()
-    app.exec_()
+    if not engine.rootObjects():
+        sys.exit(-1)
+    
+    sys.exit(app.exec_())

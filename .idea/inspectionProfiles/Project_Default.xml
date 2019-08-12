@@ -5,6 +5,8 @@
       <option name="ignoredIdentifiers">
         <list>
           <option value="str.read" />
+          <option value="PySide2.QtCore.Slot" />
+          <option value="PySide2.QtCore.Signal" />
         </list>
       </option>
     </inspection_tool>

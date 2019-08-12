@@ -1,8 +1,11 @@
 import calendar
 import datetime
 import numpy as np
+
+from src.controlers.channels.layout import _topo_to_sphere
 from src.controlers.info import _empty_info
-from src.controlers.utils import channels
+from src.controlers.utils import channels, _create_channels
+from src.controlers.io.constants import FIFF
 
 
 def b(s):
@@ -35,7 +38,7 @@ if __name__ == '__main__':
         first_name = patient_name[-1] if len(patient_name) > 0 else ''
         f.seek(2, 1)
         sex = read_str(f, 1)
-        print(sex, patient_name,first_name, last_name)
+        print(sex, patient_name, first_name, last_name)
         hand = read_str(f, 1)
         print(hand)
         f.seek(205)
@@ -69,12 +72,12 @@ if __name__ == '__main__':
         n_channels = np.fromfile(f, dtype = '<u2', count = 1)[0]
         f.seek(376)
         sfreq = np.fromfile(f, dtype = '<u2', count = 1)[0]
-        print(n_channels, sfreq)
+        print(f'n_channels: {n_channels}, sfreq: {sfreq}')
         eog = 'header'
         if eog == 'header':
             f.seek(402)
             eog = [idx for idx in np.fromfile(f, dtype = 'i2', count = 2) if idx >= 0]
-        print(eog)
+        print(f'eog: {eog}')
         f.seek(438)
         lowpass_toggle = np.fromfile(f, 'i1', count = 1)[0]
         highpass_toggle = np.fromfile(f, 'i1', count = 1)[0]
@@ -181,4 +184,24 @@ if __name__ == '__main__':
     if eog == 'auto':
         eog = channels(ch_names, 'EOG', eog)
     print(f'eog channels {eog}')
-    
+    ecg, emg, misc = [], [], []
+    chs = _create_channels(ch_names, cals, FIFF.FIFFV_COIL_EEG, FIFF.FIFFV_EEG_CH, eog, ecg, emg, misc)
+    eeg_signature = [idx for idx, ch in enumerate(chs) if ch['coil_type'] == FIFF.FIFFV_COIL_EEG]
+    coords = _topo_to_sphere(pos, eeg_signature)  # Sphere coordinates
+    locs = np.full((len(chs), 12), np.nan)  # Localizations array
+    locs[:, :3] = coords
+    for ch, loc in zip(chs, locs):  # Paired items
+        ch.update(loc = loc)
+
+    # Addd the stim channel
+    chan_info = {'cal':     1.0, 'logno': len(chs) + 1, 'scanno': len(chs) + 1, 'range': 1.0, 'unit_mul': 0.,
+                 'ch_name': 'STI 014', 'unit': FIFF.FIFF_UNIT_NONE, 'coord_frame': FIFF.FIFFV_COORD_UNKNOWN,
+                 'loc':     np.zeros(12), 'coil_type': FIFF.FIFFV_COIL_NONE, 'kind': FIFF.FIFFV_STIM_CH}
+    chs.append(chan_info)
+    baselines.append(0)  # For stim channel
+    cnt_info.update(baselines = np.array(baselines), n_samples = n_samples, stim_channel = stim_channel,
+                    n_bytes = n_bytes)
+    info.update(meas_date = meas_date, desciption = str(session_label), bads = bads, subject_info = subject_info,
+                chs = chs)
+    print(f'info: {info}'
+          f'cnt_info: {cnt_info}')
