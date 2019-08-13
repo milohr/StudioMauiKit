@@ -4,6 +4,7 @@
 from PySide2.QtCore import QObject, Slot
 from PySide2.QtCore import QSettings
 import os
+from src.controlers.util import extract_name
 
 
 class LoadProject(QObject):
@@ -42,13 +43,11 @@ class LoadProject(QObject):
     def settings_dir(self, past_path):
         return self.settings.fileName()
 
-    @Slot(str)
+    @Slot(str, result='QString')
     def load(self, project):
         self.project_to_load = project
         print(f'Project path loaded: {self.project_to_load}')
-        head_tail = os.path.split(self.project_to_load)
-        self.name_project = head_tail[1].replace(".conf", "")
-        del head_tail
+        self.name_project = extract_name(self.project_to_load)
         print(f'Project Name loaded: {self.name_project}')
         self.settings = QSettings("Nebula", self.name_project)
         self.settings.beginGroup("Project")
@@ -60,7 +59,10 @@ class LoadProject(QObject):
         self.signal_value_path = self.settings.value("ValuePath")
         self.settings.endGroup()
         print(f'Organization name: {self.settings.organizationName(), self.settings.fileName()}')
-        print(f'Loading signal files: {self.signal_path}') # Necesito eviarlo a que cargue la señal
+        print(f'Loading signal files: {self.signal_path}')  # Necesito eviarlo a que cargue la señal desde qml
+        
+        return self.signal_path
+        
         
 
         

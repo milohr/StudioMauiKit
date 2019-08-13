@@ -89,7 +89,7 @@ Maui.ApplicationWindow
                 fmDialog.show(function(paths)
                 {
                     console.log(paths)
-                    loadFile.read(paths) // Falta organizar el settings respectivo y los hilos
+                    loadFile.read(paths)
                     loadFile.update_path(paths)
                 })
             }
@@ -159,7 +159,12 @@ Maui.ApplicationWindow
                             {
 //                                fmDialog.initPath = dir // home/$USER
                                 console.log(paths)
-                                loadProject.load(paths)
+                                loadFile.set_project_name(paths)
+                                var signal_path = loadProject.load(paths)
+                                if (signal_path)
+                                {
+                                    loadFile.read(signal_path)
+                                }
 //                                var dir = loadProject.load(paths)
 //                                console.log("desde qml2 "+dir)
 

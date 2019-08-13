@@ -45,7 +45,8 @@ def read_raw(path):
         print('Cant read file')
     finally:
         print('Upload signal(s) correctly')
-        #callback()
+        # callback()
+
 
 class LoadFile(QObject):
     """
@@ -59,16 +60,22 @@ class LoadFile(QObject):
     
     def finished(self):
         print('Load and raw signal finished')
-
+    
+    @Slot(str)
+    def set_project_name(self, name):
+        from src.controlers.util import extract_name
+        self.project_name = extract_name(name)
+        #print(f'\033[1;36;40m SET PROJECT NAME: {self.project_name} \033[0m \n')
+    
     @Slot(str)
     def read(self, path):
         self.list_path = path
-        thread = threading.Thread(target = read_raw, args = (self.list_path, ))
+        thread = threading.Thread(target = read_raw, args = (self.list_path,))
         thread.start()
-        #thread.join()
-        #h = threading.Thread(target = read_raw, args = (path, ))
-        #h.start()
-        #h.join()
+        # thread.join()
+        # h = threading.Thread(target = read_raw, args = (path, ))
+        # h.start()
+        # h.join()
     
     @Slot(str)
     def assign_project(self, project):
@@ -79,13 +86,33 @@ class LoadFile(QObject):
         settings.endGroup()
     
     @Slot(str)
-    def update_path(self, signal_path):
+    def update_path(self, signal_name):
+        #from src.controlers.util import extract_name
+        #self.project_name = extract_name(signal_name)
         settings = QSettings("Nebula", self.project_name)
         settings.beginGroup("SignalFiles")
+        before_list_path = settings.value("Path")
+        print(
+            f'befores list : {settings.fileName(), self.project_name, signal_name}'
+        )
+        actual_list_path = self.list_path
+        entire_path = lambda x, y: x + ', ' + y
+        self.list_path = entire_path(before_list_path, actual_list_path)
+        print(f'\033[1;36;40m AQUIIIIIII: {self.list_path} \033[0m \n')
         settings.setValue("Path", self.list_path)
+        del before_list_path, actual_list_path
+        # if not settings.value("Path") or not settings.value("Path").strip():
+        #     settings.setValue("Path", self.list_path)
+        # else:
+        #     before_list_path = settings.value("Path")
+        #     actual_list_path = self.list_path
+        #     entire_path = lambda x, y: x + ', ' + y
+        #     self.list_path = entire_path(before_list_path, actual_list_path)
+        #     print(f'\033[1;36;40m AQUIIIIIII: {self.list_path} \033[0m \n')
+        #     settings.setValue("Path", self.list_path)
+        #     del before_list_path, actual_list_path
         settings.endGroup()
-        
-        
+    
     '''
     @Slot(str)
     def read_raw2(self, path):
@@ -125,7 +152,3 @@ class LoadFile(QObject):
         finally:
             print('Upload signal(s) correctly')
      '''
-        
-        
-        
-    
