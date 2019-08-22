@@ -3,6 +3,8 @@
 # License: GNU Lesser General Public License v3.0 (LGPLv3)
 from PySide2.QtCore import QObject, Slot
 from PySide2.QtCore import QSettings
+from PySide2.QtCore import QUrl
+from PySide2.QtCore import QFileInfo
 import os
 from src.controlers.util import extract_name
 
@@ -25,15 +27,19 @@ class LoadProject(QObject):
         :param name_project: Name of the project
         :return: path of the settings file
         """
+        from PySide2.QtCore import QDateTime
         self.name_project = name_project
         #print("from python " + self.name_project)
         self.settings = QSettings("Nebula", self.name_project)
         self.settings.beginGroup("Project")
         self.settings.setValue("Path", os.path.join(os.environ['HOME'], '.config/Nebula', self.name_project + '.conf'))
         self.settings.setValue("Name", self.name_project)
+        self.settings.setValue("Date", QDateTime.currentDateTime().toString())
+        self.settings.setValue("LastEdit", QDateTime.currentDateTime().toString())
         self.settings.endGroup()
         self.settings.beginGroup("SignalFiles")
         self.settings.setValue("Path", "None")  # Paths of the signals
+        self.settings.setValue("ValuePath", "None")  # Value paths of the signals -numpy file
         self.settings.endGroup()
         print(self.settings.fileName())
         
@@ -45,10 +51,11 @@ class LoadProject(QObject):
 
     @Slot(str, result='QString')
     def load(self, project):
-        self.project_to_load = project
+        self.project_to_load = QUrl(project).toLocalFile()
         print(f'Project path loaded: {self.project_to_load}')
         self.name_project = extract_name(self.project_to_load)
-        print(f'Project Name loaded: {self.name_project}')
+        print(f'Project Name loaded: {self.name_project} and the other'
+              f' way is: {QFileInfo(self.project_to_load).fileName()}')
         self.settings = QSettings("Nebula", self.name_project)
         self.settings.beginGroup("Project")
         self.path = self.settings.value("Path")
@@ -59,7 +66,8 @@ class LoadProject(QObject):
         self.signal_value_path = self.settings.value("ValuePath")
         self.settings.endGroup()
         print(f'Organization name: {self.settings.organizationName(), self.settings.fileName()}')
-        print(f'Loading signal files: {self.signal_path}')  # Necesito eviarlo a que cargue la señal desde qml
+        self.signal_path = self.signal_path.replace('None,', '')
+        print(f'Loading signal files: {self.signal_path} type {type(self.signal_path)}')  # Necesito eviarlo a que cargue la señal desde qml
         
         return self.signal_path
         

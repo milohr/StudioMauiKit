@@ -43,8 +43,6 @@ Maui.ApplicationWindow
             console.log(textEntry.text)
             console.log(loadProject.create(textEntry.text))
             loadProject.create(textEntry.text)
-//            var str = loadProject.create(textEntry.text)
-//            fmDialog.initPath = str.slice(0,str.lastIndexOf('/'))
             loadFile.assign_project(textEntry.text)
             close()
         }
@@ -90,13 +88,17 @@ Maui.ApplicationWindow
                 {
                     console.log(paths)
                     loadFile.read(paths)
-                    loadFile.update_path(paths)
+                    loadFile.update_path(paths) //Organizar bien el update
                 })
             }
         },
         ToolButton
         {
             icon.name: "labplot-xy-interpolation-curve"
+        },
+        ToolButton
+        {
+            icon.name: "ps2pdf"
         }
 
     ]
@@ -147,22 +149,26 @@ Maui.ApplicationWindow
                         width: height *2
                         onClicked:
                         {
-                            console.log(fmDialog.initPath)
+                            console.log("Path from fm: " + fmDialog.initPath)
                             var dir = loadProject.settings_dir(fmDialog.initPath)
                             dir = dir.slice(0, dir.lastIndexOf('/'))
                             dir = [dir,'Nebula'].join('/').replace(/\/{2,}/, '/')
 
-                            fmDialog.initPath = dir
+                            fmDialog.initPath = "file://" + dir // Because its local
+                            console.log("Path from fm2: " + fmDialog.initPath)
+
                             fmDialog.filters = ["*.conf"]
+                            fmDialog.singleSelection = true
                             fmDialog.mode = fmDialog.modes.OPEN
                             fmDialog.show(function(paths)
                             {
-//                                fmDialog.initPath = dir // home/$USER
                                 console.log(paths)
                                 loadFile.set_project_name(paths)
                                 var signal_path = loadProject.load(paths)
+                                console.log(signal_path)
                                 if (signal_path)
                                 {
+                                    console.log("Entro")
                                     loadFile.read(signal_path)
                                 }
 //                                var dir = loadProject.load(paths)
