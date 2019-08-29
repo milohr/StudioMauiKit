@@ -67,7 +67,7 @@ class LoadProject(QObject):
         self.settings.endGroup()
         print(f'Organization name: {self.settings.organizationName(), self.settings.fileName()}')
         self.signal_path = self.signal_path.replace('None,', '')
-        print(f'Loading signal files: {self.signal_path} type {type(self.signal_path)}')  # Necesito eviarlo a que cargue la señal desde qml
+        print(f'Loading signal files: {self.signal_path} type {type(self.signal_path)}')
         
         return self.signal_path
         

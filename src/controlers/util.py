@@ -6,7 +6,7 @@
 def extract_name(path):
     """
     Extract the name from a path
-    :param str: Path, having in the end of the line the name to extract with the .conf format
+    :param path: Str, having in the end of the line the name to extract with the .conf format
     :return: name
     """
     import os
@@ -15,6 +15,10 @@ def extract_name(path):
     del head_tail
     return name
 
+def update(path):
+    
+    
+    return path
 
 def read_raw(path):
     """

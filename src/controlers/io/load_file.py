@@ -3,9 +3,13 @@
 # License: GNU Lesser General Public License v3.0 (LGPLv3)
 from PySide2.QtCore import QObject, Slot
 from PySide2.QtCore import QSettings
+from PySide2.QtCore import QDateTime
+from PySide2.QtCore import QUrl
 import threading
 import queue
+from src.controlers.thread_with_return import ThreadWithReturn
 from src.controlers.util import read_raw
+
 
 
 class LoadFile(QObject):
@@ -15,8 +19,8 @@ class LoadFile(QObject):
     
     def __init__(self):
         QObject.__init__(self)
-        self.list_path = []
-        self.list_value_path = []
+        self.list_path = list()
+        self.list_value_path = list()
         self.project_name = ""
     
     def finished(self):
@@ -30,17 +34,16 @@ class LoadFile(QObject):
     
     @Slot(str)
     def read(self, path):
-        que = queue.Queue()
+        #que = queue.Queue()
         self.list_path = path.split(',')
-        thread = threading.Thread(target = lambda q, arg1: q.put(read_raw(arg1)), args = (que, self.list_path)) #Necesito enviar el nombre del proyecto para guardar los valores
+        thread = ThreadWithReturn(target = read_raw, args = (self.list_path,))
+        #thread = threading.Thread(target = lambda q, arg1: q.put(read_raw(arg1)), args = (que, self.list_path)) #Necesito enviar el nombre del proyecto para guardar los valores
         thread.start()
-        #thread.join()
-        self.list_value_path = que.get() # Tiene es que agregar al final, no resetear
+        #self.list_value_path.extend(que.get())
+        self.list_value_path.extend(thread.join())
+        self.list_value_path = list(dict.fromkeys(self.list_value_path))
         print(f'\033[1;36;40m Value path: {self.list_value_path} \033[0m \n')
-        # thread.join()
-        # h = threading.Thread(target = read_raw, args = (path, ))
-        # h.start()
-        # h.join()
+        self.update_value_path(self.list_value_path)
     
     @Slot(str)
     def assign_project(self, project):
@@ -55,8 +58,6 @@ class LoadFile(QObject):
     
     @Slot(str)
     def update_path(self, signal_name):
-        from PySide2.QtCore import QDateTime
-        
         settings = QSettings("Nebula", self.project_name)
         
         settings.beginGroup("Project")
@@ -79,4 +80,20 @@ class LoadFile(QObject):
         del before_list_path, actual_list_path
     
     def update_value_path(self, value_path):
-        self.list_value_path = value_path
+        settings = QSettings("Nebula", self.project_name)
+
+        settings.beginGroup("Project")
+        settings.setValue("LastEdit", QDateTime.currentDateTime().toString())
+        settings.endGroup()
+        
+        settings.beginGroup("SignalFiles")
+        before_path = settings.value("ValuePath")
+        before_path = before_path.split(',')
+        before_path.extend(value_path)
+        self.list_value_path = list(dict.fromkeys(before_path))
+        if 'None' in self.list_path:
+            self.list_value_path.remove('None')
+        actual_path = ','.join(self.list_value_path)
+        settings.setValue("ValuePath", actual_path)  # Tengo que leer primero qeu hay aqui y luego actualizar
+        settings.endGroup()
+        del actual_path, before_path
