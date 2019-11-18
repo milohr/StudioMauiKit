@@ -21,6 +21,10 @@ class LoadProject(QObject):
         self.signal_value_path = []
     
     @Slot(str, result = 'QString')
+    def get_name_project(self, *args):
+        return self.name_project
+    
+    @Slot(str, result = 'QString')
     def create(self, name_project):
         """
         
@@ -31,16 +35,22 @@ class LoadProject(QObject):
         self.name_project = name_project
         #print("from python " + self.name_project)
         self.settings = QSettings("Nebula", self.name_project)
+        
         self.settings.beginGroup("Project")
         self.settings.setValue("Path", os.path.join(os.environ['HOME'], '.config/Nebula', self.name_project + '.conf'))
         self.settings.setValue("Name", self.name_project)
         self.settings.setValue("Date", QDateTime.currentDateTime().toString())
         self.settings.setValue("LastEdit", QDateTime.currentDateTime().toString())
         self.settings.endGroup()
+        
         self.settings.beginGroup("SignalFiles")
         self.settings.setValue("Path", "None")  # Paths of the signals
         self.settings.setValue("ValuePath", "None")  # Value paths of the signals -numpy file
         self.settings.endGroup()
+
+        self.settings.beginGroup("Info")
+        self.settings.endGroup()
+        
         print(self.settings.fileName())
         
         return self.settings.fileName()

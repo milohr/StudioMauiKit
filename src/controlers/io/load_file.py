@@ -1,15 +1,14 @@
 # Author: Keveen Rodriguez Zapata <keveenrodriguez@gmail.com>
 #
 # License: GNU Lesser General Public License v3.0 (LGPLv3)
+import subprocess
+
 from PySide2.QtCore import QObject, Slot
 from PySide2.QtCore import QSettings
 from PySide2.QtCore import QDateTime
-from PySide2.QtCore import QUrl
-import threading
-import queue
-from src.controlers.thread_with_return import ThreadWithReturn
-from src.controlers.util import read_raw
 
+from src.controlers.thread_with_return import ThreadWithReturn
+from src.controlers.util import read_raw, read_info
 
 
 class LoadFile(QObject):
@@ -22,6 +21,8 @@ class LoadFile(QObject):
         self.list_path = list()
         self.list_value_path = list()
         self.project_name = ""
+        self.info = list()
+        self.sfreq = list()
     
     def finished(self):
         print('Load and raw signal finished')
@@ -43,7 +44,9 @@ class LoadFile(QObject):
         self.list_value_path.extend(thread.join())
         self.list_value_path = list(dict.fromkeys(self.list_value_path))
         print(f'\033[1;36;40m Value path: {self.list_value_path} \033[0m \n')
+        self.info, self.sfreq = read_info(self.list_path)
         self.update_value_path(self.list_value_path)
+        
     
     @Slot(str)
     def assign_project(self, project):
@@ -77,6 +80,21 @@ class LoadFile(QObject):
         print(f'\033[1;36;40m After list path: {actual_list_path} \033[0m \n')
         settings.setValue("Path", actual_list_path)
         settings.endGroup()
+
+        self.info, self.sfreq = read_info(self.list_path)
+        settings.beginGroup("Info")
+        settings.beginWriteArray("sfreq")
+        for i in range(len(self.sfreq)):
+            settings.setArrayIndex(i)
+            settings.setValue("sfreq", self.sfreq[i])
+        settings.endArray()
+        settings.beginWriteArray("SubjectInfo")
+        for i in range(len(self.info)):
+            settings.setArrayIndex(i)
+            for key, value in self.info[i].items():
+                settings.setValue(key, str(value))
+        settings.endArray()
+        settings.endGroup()
         del before_list_path, actual_list_path
     
     def update_value_path(self, value_path):
@@ -97,3 +115,22 @@ class LoadFile(QObject):
         settings.setValue("ValuePath", actual_path)  # Tengo que leer primero qeu hay aqui y luego actualizar
         settings.endGroup()
         del actual_path, before_path
+    
+    @Slot(str)
+    def raw_plot(self, path):
+        try:
+            new_gui = subprocess.Popen(["python",
+                                        "/home/kevrodz/Documents/Nebula/src/controlers/multiple_plot.py",
+                                        self.list_value_path[1] if self.list_value_path[0] == 'None' else self.list_value_path[0]])
+        except:
+            print('Can not plot signal')
+        # manager = Manager()
+        # data = manager.list()
+        # p = Process(target = f, args = ('bob',))
+        # p.start()
+        # input("Type any key to quit.")
+        # print("Waiting for graph window process to join...")
+        # p.join()
+        # print("Process joined successfully. C YA !")
+
+        #sys.exit(app.exec_())
