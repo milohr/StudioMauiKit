@@ -11,11 +11,22 @@ Maui.ActionSideBar
     preferredWidth: Kirigami.Units.gridUnit * 10
     collapsible: true
     collapsed: !root.isWide
+    collapsedSize: Maui.Style.iconSizes.medium + (Maui.Style.space.medium*4) - Maui.Style.space.tiny
+
+Kirigami.Theme.backgroundColor: "#a48ec5"
+Kirigami.Theme.textColor: "white"
+
+background: Rectangle
+{
+  color: slideView.Kirigami.Theme.backgroundColor
+  radius: 5
+}
+
 
     Action {
         text: "Button"
         onTriggered: console.log("button slideview")
-        icon.name: "anchor"
+        icon.name: "love"
     }
     Action {
         id: action1
@@ -30,14 +41,14 @@ Maui.ActionSideBar
             secondChart = true
             swipeView.currentIndex = 2;
         }
-        icon.name: "anchor"
+        icon.name: "headphones"
     }
 
     Action {
         id: action2
         text: "Button3"
         onTriggered: console.log("button3 slideview")
-        icon.name: "anchor"
+        icon.name: "email"
     }
 
 }
